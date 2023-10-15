@@ -1,4 +1,35 @@
-		Mat inImage_color = imread("C:\\C++Projects\\pic\\mono_imgR\\right01.jpg");
+#include <iostream>
+#include <vector>
+#include <string>
+
+
+#include "opencv2/opencv.hpp"
+
+// 1.图像去畸变功能
+// 理解 remap，畸变图像与非畸变图像上点相互转换
+ 
+// 2. 局部图像去畸变
+
+// 3. 投影功能
+// 3.1 投影到畸变图像
+// 3.2 投影到去畸变图像
+
+
+// 4. 旋转相机标定
+
+
+
+int test_undistort() {
+	std::string src_path = "./data/left05.jpg";
+	cv::Mat src_img = cv::imread(src_path);
+	cv::Mat src_gray_img = cv::imread(src_path, cv::IMREAD_GRAYSCALE);
+
+	cv::Mat intrinsic = 
+
+
+}
+
+	Mat inImage_color = imread("C:\\C++Projects\\pic\\mono_imgR\\right01.jpg");
 	Mat inImage = imread("C:\\C++Projects\\pic\\mono_imgR\\right01.jpg", cv::IMREAD_GRAYSCALE);
 	Mat cImage, cImage2, map1,map2;
 	int i = 0;
