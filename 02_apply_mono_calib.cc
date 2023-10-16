@@ -40,12 +40,12 @@ int test_undistort() {
 	cv::Mat test_img = cv::imread(src_path);
 	cv::Mat test_gray_img = cv::imread(src_path, cv::IMREAD_GRAYSCALE);
 
-	cv::Mat undistort_img1, undistort_img2, undistort_img3;
+	cv::Mat undistort_img1, undistort_img2, u3;
 	// 畸变矫正方法1
 	cv::undistort(test_img, undistort_img1, intrinsic, distortion_coeff);
 	cv::Mat intrinsic_2 = intrinsic.clone();
 	intrinsic_2.at<double>(0, 2) = 200;
-	cv::undistort(test_img, undistort_img3, intrinsic, distortion_coeff, intrinsic_2);
+	cv::undistort(test_img, u3, intrinsic, distortion_coeff, intrinsic_2);
 	cv::Mat u4;
 	cv::undistort(test_img, u4, intrinsic_2, distortion_coeff);
 
@@ -57,8 +57,6 @@ int test_undistort() {
 	intrinsic_3.at<double>(1, 2) *= scale;
 	cv::Mat u5;
 	cv::undistort(test_img, u5, intrinsic, distortion_coeff, intrinsic_3);
-
-
 
 	// 畸变矫正方法2
 	cv::Mat map_x, map_y;
