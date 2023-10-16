@@ -76,6 +76,7 @@ void guessCameraParam() {
 int SaveYaml(const std::string& file_path, const std::vector<cv::Mat>& data) {
   string filename = file_path;
   FileStorage fs(filename, FileStorage::WRITE);
+	fs << "mat_cnt" << int(data.size());
   for (int i = 0; i < data.size(); ++i) {
     fs << "data_"+std::to_string(i) << data[i];
   }

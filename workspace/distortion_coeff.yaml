@@ -1,5 +1,6 @@
 %YAML:1.0
 ---
+mat_cnt: 1
 data_0: !!opencv-matrix
    rows: 5
    cols: 1

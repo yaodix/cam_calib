@@ -17,18 +17,74 @@
 
 // 4. 旋转相机标定
 
+std::vector<cv::Mat> LoadParams(const std::string& file_path) {
+	std::vector<cv::Mat> data;
+	cv::FileStorage fs;
+	fs.open(file_path, cv::FileStorage::READ);
+	int cnt = 0;
+	fs["mat_cnt"] >> cnt;
+	for (int i =0; i < cnt; ++i) {
+		cv::Mat temp;
+		fs["data_" + std::to_string(i)] >> temp;
+		data.push_back(temp);
+	}
+	return data;
+}
 
 
 int test_undistort() {
-	std::string src_path = "./data/left05.jpg";
-	cv::Mat src_img = cv::imread(src_path);
-	cv::Mat src_gray_img = cv::imread(src_path, cv::IMREAD_GRAYSCALE);
+	std::string src_path = "./calib_data/left05.jpg";
+	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
+	cv::Mat distortion_coeff = LoadParams("./workspace/distortion_coeff.yaml").front();
 
-	cv::Mat intrinsic = 
+	cv::Mat test_img = cv::imread(src_path);
+	cv::Mat test_gray_img = cv::imread(src_path, cv::IMREAD_GRAYSCALE);
 
+	cv::Mat undistort_img1, undistort_img2, undistort_img3;
+	// 畸变矫正方法1
+	cv::undistort(test_img, undistort_img1, intrinsic, distortion_coeff);
+	cv::Mat intrinsic_2 = intrinsic.clone();
+	intrinsic_2.at<double>(0, 2) = 200;
+	cv::undistort(test_img, undistort_img3, intrinsic, distortion_coeff, intrinsic_2);
+	cv::Mat u4;
+	cv::undistort(test_img, u4, intrinsic_2, distortion_coeff);
+
+	cv::Mat intrinsic_3 = intrinsic.clone();
+	float scale = 0.5;
+	intrinsic_3.at<double>(0, 0) *= scale;
+	intrinsic_3.at<double>(0, 2) *= scale;
+	intrinsic_3.at<double>(1, 1) *= scale;
+	intrinsic_3.at<double>(1, 2) *= scale;
+	cv::Mat u5;
+	cv::undistort(test_img, u5, intrinsic, distortion_coeff, intrinsic_3);
+
+
+
+	// 畸变矫正方法2
+	cv::Mat map_x, map_y;
+	cv::Mat intrinsic_copy = intrinsic.clone();
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			intrinsic_copy, test_img.size(), CV_32FC1, map_x, map_y);
+	cv::remap(test_img, undistort_img2, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+
+	cv::Mat diff_im = undistort_img2 - undistort_img1;
+	bool is_same = cv::sum(diff_im)[0] > 0 ? false : true;
+	// 此处两种方法去畸变图像一般只有个别像素有微小差异，可以认为是相同的去畸变图像
+	std::cout << "two undistort image same? " << is_same << std::endl;
+	// cv::Mat new_cam_matrix2 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 1, new_size2);
+	cv::Mat concat_img;
+	cv::hconcat(std::vector<cv::Mat>{undistort_img2, undistort_img1}, concat_img);
+	cv::imshow("undistort", concat_img);
+	cv::waitKey(0);
 
 }
 
+int main() {
+	test_undistort();
+	return 0;
+}
+/*
 	Mat inImage_color = imread("C:\\C++Projects\\pic\\mono_imgR\\right01.jpg");
 	Mat inImage = imread("C:\\C++Projects\\pic\\mono_imgR\\right01.jpg", cv::IMREAD_GRAYSCALE);
 	Mat cImage, cImage2, map1,map2;
@@ -172,7 +228,7 @@ int test_undistort() {
 
 	double u = pos_img.at<double>(0, 0) / pos_img.at<double>(2, 0);
 	double v = pos_img.at<double>(1, 0) / pos_img.at<double>(2, 0);
-	//*/
+	//
 	drawFrameAxes(inImage_color, intrinsic, distortion_coeff, rvec, tvec, 2 * squareSize);
 	int len_of_box = squareSize;
 	cv::Point3d origin_point(0, 0, 0), point1(len_of_box, 0,0), point3(len_of_box, len_of_box ,0), point2(0, len_of_box, 0);
@@ -189,3 +245,4 @@ int test_undistort() {
 		cv::line(inImage_color, bbox_plane[i], bbox_plane[i + 4], cv::Scalar(255, 0, 0), 1);
 	}
 
+*/
