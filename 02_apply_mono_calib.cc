@@ -41,36 +41,68 @@ int test_undistort() {
 	cv::Mat test_gray_img = cv::imread(src_path, cv::IMREAD_GRAYSCALE);
 
 	cv::Mat undistort_img1, undistort_img2, u3;
-	// 畸变矫正方法1
+	// 畸变矫正方法1-undistort
 	cv::undistort(test_img, undistort_img1, intrinsic, distortion_coeff);
-	cv::Mat intrinsic_2 = intrinsic.clone();
-	intrinsic_2.at<double>(0, 2) = 200;
-	cv::undistort(test_img, u3, intrinsic, distortion_coeff, intrinsic_2);
+
+	// newCameraMatrix参数如何使用
+	cv::Mat intrinsic_crop = intrinsic.clone();
+	intrinsic_crop.at<double>(0, 2) = 200;
+	cv::undistort(test_img, u3, intrinsic, distortion_coeff, intrinsic_crop);
 	cv::Mat u4;
-	cv::undistort(test_img, u4, intrinsic_2, distortion_coeff);
+	cv::undistort(test_img, u4, intrinsic_crop, distortion_coeff);
 
-	cv::Mat intrinsic_3 = intrinsic.clone();
+	cv::Mat intrinsic_scale = intrinsic.clone();
 	float scale = 0.5;
-	intrinsic_3.at<double>(0, 0) *= scale;
-	intrinsic_3.at<double>(0, 2) *= scale;
-	intrinsic_3.at<double>(1, 1) *= scale;
-	intrinsic_3.at<double>(1, 2) *= scale;
+	intrinsic_scale.at<double>(0, 0) *= scale;
+	intrinsic_scale.at<double>(0, 2) *= scale;
+	intrinsic_scale.at<double>(1, 1) *= scale;
+	intrinsic_scale.at<double>(1, 2) *= scale;
 	cv::Mat u5;
-	cv::undistort(test_img, u5, intrinsic, distortion_coeff, intrinsic_3);
+	cv::undistort(test_img, u5, intrinsic, distortion_coeff, intrinsic_scale);
 
-	// 畸变矫正方法2
+	// 畸变矫正方法2-remap
 	cv::Mat map_x, map_y;
 	cv::Mat intrinsic_copy = intrinsic.clone();
 	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
 			intrinsic_copy, test_img.size(), CV_32FC1, map_x, map_y);
 	cv::remap(test_img, undistort_img2, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
 			cv::BorderTypes::BORDER_CONSTANT, 0);
+	
+	// remap - resize
+	cv::Mat u11, u12;
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			intrinsic_scale, cv::Size(test_img.size().width * scale,test_img.size().height * scale) ,
+			CV_32FC1, map_x, map_y);
+	cv::remap(test_img, u11, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+
+	// remap - crop
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			intrinsic_crop, cv::Size(test_img.size().width - (intrinsic.at<double>(0, 2) - 200) ,test_img.size().height) ,
+			CV_32FC1, map_x, map_y);
+	cv::remap(test_img, u12, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+
 
 	cv::Mat diff_im = undistort_img2 - undistort_img1;
 	bool is_same = cv::sum(diff_im)[0] > 0 ? false : true;
 	// 此处两种方法去畸变图像一般只有个别像素有微小差异，可以认为是相同的去畸变图像
 	std::cout << "two undistort image same? " << is_same << std::endl;
-	// cv::Mat new_cam_matrix2 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 1, new_size2);
+
+	// getOptimalNewCameraMatrix 的使用
+	// 对alpha参数的理解， 取值[0-1]保留有效像素的范围
+	cv::Mat u21, u22;
+	cv::Mat new_cam_matrix_alpha_1 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 1, test_img.size());
+	cv::Mat new_cam_matrix_alpha_0 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 0, test_img.size());
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			new_cam_matrix_alpha_1, test_img.size(), CV_32FC1, map_x, map_y);
+	cv::remap(test_img, u21, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			new_cam_matrix_alpha_0, test_img.size(), CV_32FC1, map_x, map_y);
+	cv::remap(test_img, u22, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+
 	cv::Mat concat_img;
 	cv::hconcat(std::vector<cv::Mat>{undistort_img2, undistort_img1}, concat_img);
 	cv::imshow("undistort", concat_img);
