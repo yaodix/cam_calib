@@ -67,7 +67,7 @@ int test_undistort() {
 			intrinsic_copy, test_img.size(), CV_32FC1, map_x, map_y);
 	cv::remap(test_img, undistort_img2, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
 			cv::BorderTypes::BORDER_CONSTANT, 0);
-	
+
 	// remap - resize
 	cv::Mat u11, u12;
 	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
@@ -90,7 +90,7 @@ int test_undistort() {
 	std::cout << "two undistort image same? " << is_same << std::endl;
 
 	// getOptimalNewCameraMatrix 的使用
-	// 对alpha参数的理解， 取值[0-1]保留有效像素的范围
+	// 对alpha参数的理解， 取值[0-1]保留有效像素的范围，for a better control over scaling. 
 	cv::Mat u21, u22;
 	cv::Mat new_cam_matrix_alpha_1 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 1, test_img.size());
 	cv::Mat new_cam_matrix_alpha_0 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 0, test_img.size());
@@ -100,6 +100,7 @@ int test_undistort() {
 			cv::BorderTypes::BORDER_CONSTANT, 0);
 	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
 			new_cam_matrix_alpha_0, test_img.size(), CV_32FC1, map_x, map_y);
+	// 矫正后效果图边上内凹,是因为对角线相对图像两侧中心有更多的视野。
 	cv::remap(test_img, u22, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
 			cv::BorderTypes::BORDER_CONSTANT, 0);
 
@@ -107,6 +108,38 @@ int test_undistort() {
 	cv::hconcat(std::vector<cv::Mat>{undistort_img2, undistort_img1}, concat_img);
 	cv::imshow("undistort", concat_img);
 	cv::waitKey(0);
+
+}
+// 思考
+// 下面代码 得到的cImage2(畸变矫正函数输出图)与原图(有畸变图像)相同
+// undistort(inImage, cImage2, intrinsic, distort_zero);  // distort_zero all 0
+// 因为畸变矫正使用了distort参数计算扭曲的空间位置，而上面代码并没有使用，见文章 图像去畸原理
+
+
+// remap - 去畸变和有畸变图像上点互相转换, 理解map变化
+
+int test_remap() {
+	std::string src_path = "./calib_data/left05.jpg";
+	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
+	cv::Mat distortion_coeff = LoadParams("./workspace/distortion_coeff.yaml").front();
+
+	cv::Mat test_img = cv::imread(src_path);
+	cv::Mat undistort_img;
+	cv::Mat map_x, map_y;
+	cv::Mat intrinsic_copy = intrinsic.clone();
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			intrinsic_copy, test_img.size(), CV_32FC1, map_x, map_y);
+	cv::remap(test_img, undistort_img, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+
+	// 
+// 对mapLx, mapLy的理解
+// // dst中点的位置在src中何处去取
+// pt_src = (xs, ys)
+// pt_dst = (xd, yd)
+// pt_dst由pt_src映射而来，是通过一特征点位置。
+// xs = mapLx(pt_dst)
+// ys = mapLy(pt_dst)
 
 }
 
