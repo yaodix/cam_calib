@@ -132,19 +132,61 @@ int test_remap() {
 	cv::remap(test_img, undistort_img, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
 			cv::BorderTypes::BORDER_CONSTANT, 0);
 
-	// 
-// 对mapLx, mapLy的理解
-// // dst中点的位置在src中何处去取
-// pt_src = (xs, ys)
-// pt_dst = (xd, yd)
-// pt_dst由pt_src映射而来，是通过一特征点位置。
-// xs = mapLx(pt_dst)
-// ys = mapLy(pt_dst)
+	std::vector<cv::Point2f> undistort_pts, to_un{cv::Point2f(241., 97.)};
+	cv::undistortPoints(to_un, undistort_pts, intrinsic, distortion_coeff, cv::Mat(), intrinsic);
+	std::cout << std::endl;
+	std::cout << "undistort_pts " <<  undistort_pts.front() << std::endl;
+
+	cv::circle(test_img, to_un.front(), 3, cv::Scalar(0,0,255));
+	cv::circle(undistort_img, undistort_pts.front(), 3, cv::Scalar(0,255,0));
+
+	cv::Mat concat_img;
+	cv::hconcat(std::vector<cv::Mat>{test_img, undistort_img}, concat_img);
+	// cv::imshow("undistort", concat_img);
+	// cv::waitKey(0);
+
+	/* 对mapx, mapy的理解
+		dst中点的位置在src中何处去取
+		pt_src = (xs, ys)
+		pt_dst = (xd, yd)
+		pt_dst由pt_src映射而来，是通过一特征点位置。
+		xs = mapx(pt_dst)
+		ys = mapy(pt_dst)
+		去畸变图最左上角点坐标（238，93）, 畸变图像同一位置点(241， 97)
+		mapx(238, 93) == 241, mapy(238, 93) == 97
+	*/
+
+	// 如何将获得的去畸变图像上点，映射到畸变图像上
+	undistort_pts =  std::vector<cv::Point2f>{cv::Point2f(238., 93.)};
+	std::vector<cv::Point2f> camera_plane_pts;	
+	cv::undistortPoints(undistort_pts, camera_plane_pts, intrinsic, cv::Mat::zeros(5, 1, CV_32FC1));
+	// 同样效果
+	// double xc = (238. - intrinsic.at<double>(0, 2)) / intrinsic.at<double>(0, 0);
+	// double yc = (93. - intrinsic.at<double>(1, 2)) / intrinsic.at<double>(1, 1);
+	// cv::Point3d camera_plane_pt(xc, yc, 1.);
+	std::vector<cv::Point2d> distort_pts;
+	cv::Point3d camera_plane_pt(camera_plane_pts.front().x, camera_plane_pts.front().y, 1.);
+	cv::projectPoints(std::vector<cv::Point3d>{camera_plane_pt}, cv::Mat::zeros(3,1, CV_64FC1),
+		cv::Mat::zeros(3, 1, CV_64FC1), intrinsic, distortion_coeff, distort_pts);
+	return 0;
 
 }
 
+int distortPoints(const std::vector<cv::Point2f> &xy, std::vector<cv::Point2f> &uv, const cv::Mat &M, const cv::Mat &d)
+{
+    std::vector<cv::Point2f> xy2;
+    std::vector<cv::Point3f>  xyz;
+    cv::undistortPoints(xy, xy2, M, cv::Mat());
+    for (cv::Point2f p : xy2)xyz.push_back(cv::Point3f(p.x, p.y, 1));
+    cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64FC1);
+    cv::Mat tvec = cv::Mat::zeros(3, 1, CV_64FC1);
+    cv::projectPoints(xyz, rvec, tvec, M, d, uv);
+    return 0;
+}
+
 int main() {
-	test_undistort();
+	// test_undistort();
+	test_remap();
 	return 0;
 }
 /*
