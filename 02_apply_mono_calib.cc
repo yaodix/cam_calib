@@ -2,19 +2,12 @@
 #include <vector>
 #include <string>
 
-
 #include "opencv2/opencv.hpp"
 
 // 1.图像去畸变功能
 // 理解 remap，畸变图像与非畸变图像上点相互转换
  
-// 2. 投影功能
-// 2.1 投影到畸变图像
-// 2.2 投影到去畸变图像
-
-// 3. 局部图像去畸变
-
-// 4. 旋转相机标定
+// 2. 局部图像去畸变
 
 std::vector<cv::Mat> LoadParams(const std::string& file_path) {
 	std::vector<cv::Mat> data;
@@ -159,7 +152,7 @@ int test_remap() {
 	undistort_pts =  std::vector<cv::Point2f>{cv::Point2f(238., 93.)};
 	std::vector<cv::Point2f> camera_plane_pts;	
 	cv::undistortPoints(undistort_pts, camera_plane_pts, intrinsic, cv::Mat::zeros(5, 1, CV_32FC1));
-	// 同样效果
+	// 上句话同样效果
 	// double xc = (238. - intrinsic.at<double>(0, 2)) / intrinsic.at<double>(0, 0);
 	// double yc = (93. - intrinsic.at<double>(1, 2)) / intrinsic.at<double>(1, 1);
 	// cv::Point3d camera_plane_pt(xc, yc, 1.);
@@ -168,24 +161,41 @@ int test_remap() {
 	cv::projectPoints(std::vector<cv::Point3d>{camera_plane_pt}, cv::Mat::zeros(3,1, CV_64FC1),
 		cv::Mat::zeros(3, 1, CV_64FC1), intrinsic, distortion_coeff, distort_pts);
 	return 0;
-
 }
 
-int distortPoints(const std::vector<cv::Point2f> &xy, std::vector<cv::Point2f> &uv, const cv::Mat &M, const cv::Mat &d)
-{
-    std::vector<cv::Point2f> xy2;
-    std::vector<cv::Point3f>  xyz;
-    cv::undistortPoints(xy, xy2, M, cv::Mat());
-    for (cv::Point2f p : xy2)xyz.push_back(cv::Point3f(p.x, p.y, 1));
-    cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64FC1);
-    cv::Mat tvec = cv::Mat::zeros(3, 1, CV_64FC1);
-    cv::projectPoints(xyz, rvec, tvec, M, d, uv);
-    return 0;
+void test_undistortROI() {
+	std::string src_path = "./calib_data/left05.jpg";
+	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
+	cv::Mat distortion_coeff = LoadParams("./workspace/distortion_coeff.yaml").front();
+
+	cv::Mat test_img = cv::imread(src_path);
+	cv::Mat undistort_img;
+	cv::Mat map_x, map_y;
+	cv::Mat intrinsic_roi = intrinsic.clone();
+	cv::Rect roi_rect(50,50, 400, 300);
+	float scale = 1.5;
+	float scale_x = (float)test_img.cols / roi_rect.width;
+	float scale_y = (float)test_img.rows / roi_rect.height;
+	intrinsic_roi.at<double>(0, 0) = intrinsic_roi.at<double>(0, 0) * scale_x;
+	intrinsic_roi.at<double>(1, 1) = intrinsic_roi.at<double>(1, 1) * scale_y;
+	intrinsic_roi.at<double>(0, 2) = (intrinsic_roi.at<double>(0, 2) - roi_rect.x)* scale_y;
+	intrinsic_roi.at<double>(1, 2) = (intrinsic_roi.at<double>(1, 2) - roi_rect.y) * scale_y;
+
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+			intrinsic_roi, roi_rect.size(), CV_32FC1, map_x, map_y);
+	cv::remap(test_img, undistort_img, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,  
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+	cv::imshow("src img", test_img);
+	cv::imshow("undistort_img roi", undistort_img);
+	cv::waitKey(0);
+
+	std::cout << "test_undistortROI end" << std::endl;
 }
 
 int main() {
 	// test_undistort();
-	test_remap();
+	// test_remap();
+	test_undistortROI();
 	return 0;
 }
 /*
@@ -332,21 +342,6 @@ int main() {
 
 	double u = pos_img.at<double>(0, 0) / pos_img.at<double>(2, 0);
 	double v = pos_img.at<double>(1, 0) / pos_img.at<double>(2, 0);
-	//
-	drawFrameAxes(inImage_color, intrinsic, distortion_coeff, rvec, tvec, 2 * squareSize);
-	int len_of_box = squareSize;
-	cv::Point3d origin_point(0, 0, 0), point1(len_of_box, 0,0), point3(len_of_box, len_of_box ,0), point2(0, len_of_box, 0);
-	cv::Point3d origin_point2(0, 0, len_of_box), point4(len_of_box, 0, len_of_box),
-		point6(len_of_box, len_of_box, len_of_box), point5(0, len_of_box, len_of_box);
 
-	vector<cv::Point3d> bbox{ origin_point, point1, point3, point2, origin_point2 , point4, point6 ,point5 };
-	vector<cv::Point2d> bbox_plane;
-	projectPoints(bbox,rvec,tvec, intrinsic, distortion_coeff, bbox_plane);
-
-	for (int i = 0; i < 4; i++) {
-		cv::line(inImage_color, bbox_plane[i], bbox_plane[(i + 1) % 4], cv::Scalar(0, 0, 255), 1);
-		cv::line(inImage_color, bbox_plane[i + 4], bbox_plane[(i + 4 + 1) == 8 ? 4 : i + 5], cv::Scalar(0, 255, 0), 1);
-		cv::line(inImage_color, bbox_plane[i], bbox_plane[i + 4], cv::Scalar(255, 0, 0), 1);
-	}
 
 */

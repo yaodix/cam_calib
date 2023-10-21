@@ -52,10 +52,10 @@ void guessCameraParam() {
 	0 fy cy
 	0 0  1
 	*/
-	intrinsic.at<double>(0, 0) = 640;    // fx		
-	intrinsic.at<double>(0, 2) = 320;   // cx
-	intrinsic.at<double>(1, 1) = 640;   // fy
-	intrinsic.at<double>(1, 2) = 240;   // cy
+	intrinsic.at<double>(0, 0) = imageWidth;    // fx		
+	intrinsic.at<double>(0, 2) = imageWidth / 2.0;   // cx
+	intrinsic.at<double>(1, 1) = imageWidth;   // fy
+	intrinsic.at<double>(1, 2) = imageHeight / 2.;   // cy
 
 	intrinsic.at<double>(0, 1) = 0;
 	intrinsic.at<double>(1, 0) = 0;
