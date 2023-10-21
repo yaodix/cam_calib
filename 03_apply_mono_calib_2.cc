@@ -1,3 +1,6 @@
+// 1. 投影功能
+// 1.1 投影到畸变图像
+// 1.2 投影到去畸变图像
 
 #include <iostream>
 #include <vector>
@@ -23,9 +26,7 @@ std::vector<cv::Mat> LoadParams(const std::string& file_path) {
 	return data;
 }
 
-// 1. 投影功能
-// 1.1 投影到畸变图像
-// 1.2 投影到去畸变图像
+
 void test_projectPoints() {
 	// 世界坐标系投影到畸变图像
 	std::string src_path = "./calib_data/left05.jpg";
