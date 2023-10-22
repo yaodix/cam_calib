@@ -16,8 +16,8 @@ message(STATUS "OpenCV_LIBS:${OpenCV_LIBS}")
 message(STATUS "OpenCV_INCLUDE_DIRS:${OpenCV_INCLUDE_DIRS}")
 
 # add_executable(demo 01_mono_calib.cc)
-# add_executable(demo 02_apply_mono_calib.cc) 
+add_executable(demo 02_apply_mono_calib.cc) 
 # add_executable(demo 03_apply_mono_calib_2.cc) 
-add_executable(demo 04_apply_mono_calib_3.cc) 
+# add_executable(demo 04_apply_mono_calib_3.cc) 
 
 target_link_libraries(demo ${OpenCV_LIBS} pthread)

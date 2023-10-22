@@ -110,7 +110,6 @@ int test_undistort() {
 
 
 // remap - 去畸变和有畸变图像上点互相转换, 理解map变化
-
 int test_remap() {
 	std::string src_path = "./calib_data/left05.jpg";
 	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
@@ -164,6 +163,42 @@ int test_remap() {
 	return 0;
 }
 
+// camera_matrix: array([[1.91503323e+03, 0.00000000e+00, 1.55375069e+03],
+//                           [0.00000000e+00, 1.91341926e+03, 8.69583724e+02],
+//                           [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+// dist_coeffs: array([[-0.35347035,  0.16350042, -0.00070635, -0.00052295, -0.04484604]])
+int test_stackoverflow() {
+		std::string src_path = "/home/yao/Downloads/Imgur.jpg";
+	cv::Mat intrinsic = (cv::Mat_<float>(3, 3) << 1.91503323e+03, 0.00000000e+00, 1.55375069e+03,
+                           0.00000000e+00, 1.91341926e+03, 8.69583724e+02,
+                          0.0, 0.0, 1.00000000e+00);
+
+	cv::Mat distortion_coeff = (cv::Mat_<float>(5, 1) <<-0.35347035,  0.16350042, -0.00070635, -0.00052295, -0.04484604);;
+
+	cv::Mat test_img = cv::imread(src_path);
+	cv::Mat undistort_img;
+	cv::Mat map_x, map_y;
+	cv::Mat intrinsic_new =	cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(),
+			0., test_img.size());
+
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(),
+			intrinsic_new, test_img.size(), CV_32FC1, map_x, map_y);
+	cv::remap(test_img, undistort_img, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
+			cv::BorderTypes::BORDER_CONSTANT, 0);
+
+	std::vector<cv::Point2f> undistort_pts;
+	std::vector<cv::Point2f> to_un{cv::Point2f(175., 648.), cv::Point2f(1130., 1396)};
+	//  std::vector<cv::Point2f> to_un{cv::Point2f(1542., 451.), cv::Point2f(1606, 1255.)};
+	cv::rectangle(test_img, cv::Rect2f(to_un.front(), to_un.back()), cv::Scalar(0,0,255), 1);
+
+	cv::undistortPoints(to_un, undistort_pts, intrinsic, distortion_coeff, cv::Mat(), intrinsic_new);
+	cv::rectangle(undistort_img, cv::Rect2f(undistort_pts.front(), undistort_pts.back()), cv::Scalar(255,0,0), 1);
+
+	std::cout << std::endl;
+	std::cout << "undistort_pts " <<  undistort_pts.front() << std::endl;
+
+}
+
 void test_undistortROI() {
 	std::string src_path = "./calib_data/left05.jpg";
 	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
@@ -196,6 +231,7 @@ void test_undistortROI() {
 int main() {
 	// test_undistort();
 	// test_remap();
-	test_undistortROI();
+	test_stackoverflow();
+	// test_undistortROI();
 	return 0;
 }
