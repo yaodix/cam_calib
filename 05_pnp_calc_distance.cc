@@ -36,13 +36,13 @@ void test_caldistance() {
 	cv::Mat tvec = tvecs[img_index];
 	cv::Mat rot;
 	cv::Rodrigues(rvec, rot);	
-	
+
 	// rot = rot.t();  // rotation of inverse
 	// tvec = -rot * tvec; // translation of inverse,相机坐标原点在世界坐标系位置
 
 	cv::Mat h(3, 3, CV_64FC1);  // 变换矩阵-外参数
 	cv::Mat pt_in_img(3,1,CV_64FC1);  // 注意这里是畸变矫正后图像rectify_img上的点
-	pt_in_img.at<double>(0, 0) = 410; // 取棋盘格点（1， 1,）
+	pt_in_img.at<double>(0, 0) = 410; // 取棋盘格点（1, 1）
 	pt_in_img.at<double>(1, 0) = 82;
 	pt_in_img.at<double>(2, 0) = 1.;
 	cv::circle(rectify_img, cv::Point(410, 82), 3, cv::Scalar(0, 0, 250), 2);
@@ -53,9 +53,7 @@ void test_caldistance() {
 	double x_world = w_coor.at<double>(0, 0) / w_coor.at<double>( 2,0);  // 仅能获得归一化平面上点
 	double y_world = w_coor.at<double>(1, 0) / w_coor.at<double>( 2,0);
 	std::cout << "world dist " << x_world << " " << y_world << std::endl;
-
 }
-
 
 int main() {
 
