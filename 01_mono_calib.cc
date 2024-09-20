@@ -212,10 +212,10 @@ int main(int argc, char *arg[]) {
 		rvecs, tvecs, intrinsic, distortion_coeff, reprojErrs);
 
   auto min_max_pair = std::minmax_element(reprojErrs.begin(), reprojErrs.end());
-	cout << "重投影误差：" << totalAvgErr << ", max error " << *min_max_pair.first << ", min error " << (*min_max_pair.second) << endl;
+	cout << "重投影误差：" << totalAvgErr << ", main error " << *min_max_pair.first << ", max error " << (*min_max_pair.second) << endl;
   cv::Mat hor_img;
   cv::hconcat(std::vector<cv::Mat>{inImage_color, rectify_img}, hor_img);
-	imshow("rectify_img", hor_img);
+	imshow("rectify_img show", hor_img);
 	waitKey(0);  // 程序暂停
 	return 0;
 }
