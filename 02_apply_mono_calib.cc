@@ -24,6 +24,56 @@ std::vector<cv::Mat> LoadParams(const std::string& file_path) {
 	return data;
 }
 
+// 利用畸变模型手写图像去畸变算法
+int test_undistort_self() {
+
+
+	std::string src_path = "./calib_data/left05.jpg";
+	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
+	cv::Mat distortion_coeff = LoadParams("./workspace/distortion_coeff.yaml").front();
+
+	cv::Mat test_img = cv::imread(src_path, 0);
+
+	//定义畸变系数
+	double k1 = distortion_coeff.at<double>(0,0);
+	double k2 = distortion_coeff.at<double>(1,0);
+	double p1 = distortion_coeff.at<double>(2,0);
+	double p2 = distortion_coeff.at<double>(3,0);
+	//相机内参
+	double fx = intrinsic.at<double>(0,0);
+	double fy = intrinsic.at<double>(1,1);
+	double cx = intrinsic.at<double>(0,2);
+	double cy = intrinsic.at<double>(1,2);
+
+	cv::Mat image_undistort = cv::Mat(test_img.rows, test_img.cols, CV_8UC1);
+
+	//遍历每个像素，计算后去畸变
+	for (int v = 0; v < test_img.rows; v++){
+		for (int u = 0; u < test_img.cols; u++){
+		  //根据公式计算去畸变图像上点(u, v)对应在畸变图像的坐标(u_distorted, v(distorted))，建立对应关系
+			double x = (u - cx) / fx;
+			double y = (v - cy) / fx;
+			double r = sqrt(x * x + y * y);
+			double x_distorted = x*(1+k1*r*r+k2*r*r*r*r)+2*p1*x*y+p2*(r*r+2*x*x);
+			double y_distorted = y*(1+k1*r*r+k2*r*r*r*r)+2*p2*x*y+p1*(r*r+2*x*x);
+			double u_distorted = fx * x_distorted + cx;
+			double v_distorted = fy * y_distorted + cy;
+
+		  //将畸变图像上点的坐标，赋值到去畸变图像中（最近邻插值）
+			if (u_distorted >= 0 && v_distorted >=0 &&
+          u_distorted < test_img.cols && v_distorted < test_img.rows) {
+            image_undistort.at<uchar>(v, u) = test_img.at<uchar>((int)v_distorted, (int)u_distorted);
+			} else {
+        image_undistort.at<uchar>(v, u) = 0;
+			}
+		}
+	}
+  cv::Mat himg;
+  cv::hconcat(std::vector<cv::Mat>{test_img, image_undistort}, himg);
+  cv::imshow("src", himg);
+	cv::waitKey(0);
+}
+
 
 int test_undistort() {
 	std::string src_path = "./calib_data/left05.jpg";
@@ -33,26 +83,65 @@ int test_undistort() {
 	cv::Mat test_img = cv::imread(src_path);
 	cv::Mat test_gray_img = cv::imread(src_path, cv::IMREAD_GRAYSCALE);
 
-	cv::Mat undistort_img1, undistort_img2, u3;
-	// 畸变矫正方法1-undistort
+	cv::Mat undistort_img1, undistort_img2;
+	// 畸变矫正方法1-undistort,最原始的畸变矫正输入参数
 	cv::undistort(test_img, undistort_img1, intrinsic, distortion_coeff);
 
-	// newCameraMatrix参数如何使用
-	cv::Mat intrinsic_crop = intrinsic.clone();
-	intrinsic_crop.at<double>(0, 2) = 200;
-	cv::undistort(test_img, u3, intrinsic, distortion_coeff, intrinsic_crop);
-	cv::Mat u4;
-	cv::undistort(test_img, u4, intrinsic_crop, distortion_coeff);
+  // undistortPoints 和 undistortImagePoints 区别
+  std::vector<cv::Point2f> to_un{cv::Point2f(241., 97.)}; // to_un图像中棋盘格左上角的点
+  std::vector<cv::Point2f> undistort_pt1, undistort_pt2;
 
+	cv::undistortPoints(to_un, undistort_pt1, intrinsic, distortion_coeff, cv::Mat(), intrinsic);
+	cv::circle(test_img, to_un.front(), 3, cv::Scalar(0,0,255));
+	cv::circle(undistort_img1, undistort_pt1.front(), 3, cv::Scalar(0,255,0));
+
+  // opencv4.6.0+
+  // cv::undistortImagePoints(to_un, undistort_pt2, intrinsic, distortion_coeff);
+	// cv::circle(undistort_img1, undistort_pt2.front(), 5, cv::Scalar(0,255,0));
+
+  cv::Mat concat_img;
+	cv::hconcat(std::vector<cv::Mat>{test_img, undistort_img1}, concat_img);
+	cv::imshow("undistort_src_undistort1", concat_img);
+
+	// newCameraMatrix参数如何使用
+  // 1. new camera intrinsic matrix based on the free scaling parameter.畸变矫正图像黑边大小的控制
+	cv::Mat new_cam_matrix_alpha_0 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 0, test_img.size());
+	cv::Mat new_cam_matrix_alpha_1 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 1, test_img.size());
+  cv::Mat undistort_alpha0, undistort_alpha1;
+  cv::undistort(test_img, undistort_alpha0, intrinsic, distortion_coeff, new_cam_matrix_alpha_0);
+  cv::undistort(test_img, undistort_alpha1, intrinsic, distortion_coeff, new_cam_matrix_alpha_1);
+
+  cv::hconcat(std::vector<cv::Mat>{undistort_alpha0, undistort_alpha1}, concat_img);
+	cv::imshow("undistort_alpha_0_and_1", concat_img);
+
+  // 2. 移动内参矩阵示例
+  cv::Mat u3, u4;
+	cv::Mat intrinsic_crop = intrinsic.clone();
+	intrinsic_crop.at<double>(0, 2) = 200;  // 移动内参矩阵cx
+	cv::undistort(test_img, u3, intrinsic, distortion_coeff, intrinsic_crop);
+	// cv::undistort(test_img, u4, intrinsic_crop, distortion_coeff);  // error
+
+  // 3. 缩放内参矩阵示例
 	cv::Mat intrinsic_scale = intrinsic.clone();
 	float scale = 0.5;
 	intrinsic_scale.at<double>(0, 0) *= scale;
 	intrinsic_scale.at<double>(0, 2) *= scale;
 	intrinsic_scale.at<double>(1, 1) *= scale;
 	intrinsic_scale.at<double>(1, 2) *= scale;
-	cv::Mat u5;
+	cv::Mat u5, u6;
 	cv::undistort(test_img, u5, intrinsic, distortion_coeff, intrinsic_scale);
+	// cv::undistort(test_img, u6, intrinsic_scale, distortion_coeff); // error
 
+	cv::hconcat(std::vector<cv::Mat>{u3, u5}, concat_img);
+	cv::imshow("undistort_shift_scale", concat_img);
+
+
+	cv::waitKey(0);
+
+}
+
+
+/*
 	// 畸变矫正方法2-remap
 	cv::Mat map_x, map_y;
 	cv::Mat intrinsic_copy = intrinsic.clone();
@@ -82,34 +171,10 @@ int test_undistort() {
 	// 此处两种方法去畸变图像一般只有个别像素有微小差异，可以认为是相同的去畸变图像
 	std::cout << "two undistort image same? " << is_same << std::endl;
 
-	// getOptimalNewCameraMatrix 的使用
-	// 对alpha参数的理解， 取值[0-1]保留有效像素的范围，for a better control over scaling. 
-	cv::Mat u21, u22;
-	cv::Mat new_cam_matrix_alpha_1 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 1, test_img.size());
-	cv::Mat new_cam_matrix_alpha_0 = cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(), 0, test_img.size());
-	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
-			new_cam_matrix_alpha_1, test_img.size(), CV_32FC1, map_x, map_y);
-	cv::remap(test_img, u21, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
-			cv::BorderTypes::BORDER_CONSTANT, 0);
-	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
-			new_cam_matrix_alpha_0, test_img.size(), CV_32FC1, map_x, map_y);
-	// 矫正后效果图边上内凹,是因为对角线相对图像两侧中心有更多的视野。
-	cv::remap(test_img, u22, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
-			cv::BorderTypes::BORDER_CONSTANT, 0);
-
-	cv::Mat concat_img;
-	cv::hconcat(std::vector<cv::Mat>{undistort_img2, undistort_img1}, concat_img);
-	cv::imshow("undistort", concat_img);
-	cv::waitKey(0);
-
-}
-// 思考
-// 下面代码 得到的cImage2(畸变矫正函数输出图)与原图(有畸变图像)相同
-// undistort(inImage, cImage2, intrinsic, distort_zero);  // distort_zero all 0
-// 因为畸变矫正使用了distort参数计算扭曲的空间位置，而上面代码并没有使用，见文章 图像去畸原理
+*/
 
 
-// remap - 去畸变和有畸变图像上点互相转换, 理解map变化
+// initUndistortRectifyMap + remap 使用
 int test_remap() {
 	std::string src_path = "./calib_data/left05.jpg";
 	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
@@ -119,13 +184,18 @@ int test_remap() {
 	cv::Mat undistort_img;
 	cv::Mat map_x, map_y;
 	cv::Mat intrinsic_copy = intrinsic.clone();
-	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(), 
+
+  cv::Mat R_30 = (cv::Mat_<double>(3,3) << 1.0000000,  0.0000000,  0.0000000,
+   0.0000000,  0.9902681,  0.1391731,
+   0.0000000, -0.1391731,  0.9902681 );
+
+	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, R_30, 
 			intrinsic_copy, test_img.size(), CV_32FC1, map_x, map_y);
 	cv::remap(test_img, undistort_img, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
 			cv::BorderTypes::BORDER_CONSTANT, 0);
 
 	std::vector<cv::Point2f> undistort_pts, to_un{cv::Point2f(241., 97.)};
-	cv::undistortPoints(to_un, undistort_pts, intrinsic, distortion_coeff, cv::Mat(), intrinsic);
+	cv::undistortPoints(to_un, undistort_pts, intrinsic, distortion_coeff, R_30, intrinsic);
 	std::cout << std::endl;
 	std::cout << "undistort_pts " <<  undistort_pts.front() << std::endl;
 
@@ -134,8 +204,8 @@ int test_remap() {
 
 	cv::Mat concat_img;
 	cv::hconcat(std::vector<cv::Mat>{test_img, undistort_img}, concat_img);
-	// cv::imshow("undistort", concat_img);
-	// cv::waitKey(0);
+	cv::imshow("initUndistortRectifyMap undistort", concat_img);
+	cv::waitKey(0);
 
 	/* 对mapx, mapy的理解
 		dst中点的位置在src中何处去取
@@ -152,7 +222,7 @@ int test_remap() {
 	undistort_pts =  std::vector<cv::Point2f>{cv::Point2f(238., 93.)};
 	std::vector<cv::Point2f> camera_plane_pts;	
 	cv::undistortPoints(undistort_pts, camera_plane_pts, intrinsic, cv::Mat::zeros(5, 1, CV_32FC1));
-	// 上句话同样效果
+	// 以下与上句话有同样效果
 	// double xc = (238. - intrinsic.at<double>(0, 2)) / intrinsic.at<double>(0, 0);
 	// double yc = (93. - intrinsic.at<double>(1, 2)) / intrinsic.at<double>(1, 1);
 	// cv::Point3d camera_plane_pt(xc, yc, 1.);
@@ -163,41 +233,6 @@ int test_remap() {
 	return 0;
 }
 
-// camera_matrix: array([[1.91503323e+03, 0.00000000e+00, 1.55375069e+03],
-//                           [0.00000000e+00, 1.91341926e+03, 8.69583724e+02],
-//                           [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
-// dist_coeffs: array([[-0.35347035,  0.16350042, -0.00070635, -0.00052295, -0.04484604]])
-int test_stackoverflow() {
-		std::string src_path = "/home/yao/Downloads/Imgur.jpg";
-	cv::Mat intrinsic = (cv::Mat_<float>(3, 3) << 1.91503323e+03, 0.00000000e+00, 1.55375069e+03,
-                           0.00000000e+00, 1.91341926e+03, 8.69583724e+02,
-                          0.0, 0.0, 1.00000000e+00);
-
-	cv::Mat distortion_coeff = (cv::Mat_<float>(5, 1) <<-0.35347035,  0.16350042, -0.00070635, -0.00052295, -0.04484604);;
-
-	cv::Mat test_img = cv::imread(src_path);
-	cv::Mat undistort_img;
-	cv::Mat map_x, map_y;
-	cv::Mat intrinsic_new =	cv::getOptimalNewCameraMatrix(intrinsic, distortion_coeff, test_img.size(),
-			0., test_img.size());
-
-	cv::initUndistortRectifyMap(intrinsic, distortion_coeff, cv::Mat(),
-			intrinsic_new, test_img.size(), CV_32FC1, map_x, map_y);
-	cv::remap(test_img, undistort_img, map_x, map_y, cv::InterpolationFlags::INTER_LINEAR,
-			cv::BorderTypes::BORDER_CONSTANT, 0);
-
-	std::vector<cv::Point2f> undistort_pts;
-	std::vector<cv::Point2f> to_un{cv::Point2f(175., 648.), cv::Point2f(1130., 1396)};
-	//  std::vector<cv::Point2f> to_un{cv::Point2f(1542., 451.), cv::Point2f(1606, 1255.)};
-	cv::rectangle(test_img, cv::Rect2f(to_un.front(), to_un.back()), cv::Scalar(0,0,255), 1);
-
-	cv::undistortPoints(to_un, undistort_pts, intrinsic, distortion_coeff, cv::Mat(), intrinsic_new);
-	cv::rectangle(undistort_img, cv::Rect2f(undistort_pts.front(), undistort_pts.back()), cv::Scalar(255,0,0), 1);
-
-	std::cout << std::endl;
-	std::cout << "undistort_pts " <<  undistort_pts.front() << std::endl;
-
-}
 
 void test_undistortROI() {
 	std::string src_path = "./calib_data/left05.jpg";
@@ -229,9 +264,9 @@ void test_undistortROI() {
 }
 
 int main() {
-	// test_undistort();
+  // test_undistort_self();
+	test_undistort();
 	// test_remap();
-	test_stackoverflow();
 	// test_undistortROI();
 	return 0;
 }
