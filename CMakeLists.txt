@@ -17,10 +17,11 @@ message(STATUS "OpenCV_INCLUDE_DIRS:${OpenCV_INCLUDE_DIRS}")
 
 add_executable(monocalib 01_mono_calib.cc)
 add_executable(calib_undistort 02_apply_mono_calib.cc) 
-# add_executable(demo 03_apply_mono_calib_2.cc) 
+add_executable(calib_pro 03_apply_mono_calib_2.cc) 
 # add_executable(demo 04_apply_mono_calib_3.cc) 
 add_executable(demo 05_pnp_calc_distance.cc) 
 
+target_link_libraries(calib_pro ${OpenCV_LIBS} pthread)
 target_link_libraries(monocalib ${OpenCV_LIBS} pthread)
 target_link_libraries(calib_undistort ${OpenCV_LIBS} pthread)
 target_link_libraries(demo ${OpenCV_LIBS} pthread)

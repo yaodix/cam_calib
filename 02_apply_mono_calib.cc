@@ -26,8 +26,6 @@ std::vector<cv::Mat> LoadParams(const std::string& file_path) {
 
 // 利用畸变模型手写图像去畸变算法
 int test_undistort_self() {
-
-
 	std::string src_path = "./calib_data/left05.jpg";
 	cv::Mat intrinsic = LoadParams("./workspace/intrinsic.yaml").front();
 	cv::Mat distortion_coeff = LoadParams("./workspace/distortion_coeff.yaml").front();

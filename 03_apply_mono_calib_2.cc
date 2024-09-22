@@ -1,6 +1,7 @@
 // 1. 投影功能
 // 1.1 投影到畸变图像
 // 1.2 投影到去畸变图像
+// 1.3 投影到棋盘格上,AR示例
 
 #include <iostream>
 #include <vector>
@@ -49,21 +50,22 @@ void test_projectPoints() {
 		}
 	}
 
+	// 世界坐标系投影到畸变图像	
 	int img_index = 4;
 	std::vector<cv::Point2f> project_points;
 	cv::projectPoints(world_points, rvecs[img_index], tvecs[img_index],
-		intrinsic, distortion_coeff, project_points);
+		intrinsic, distortion_coeff, project_points);  // 这里使用了distortion_coeff
 
 	for (auto& pt : project_points) {
 		circle(test_img, pt, 3, cv::Scalar(255, 0, 0), 2);
 	}
 	cv::circle(test_img, project_points.front(), 3, cv::Scalar(0, 0, 250), 2);
-	// cv::imshow("project points distort img", test_img);
+	cv::imshow("project points distort img", test_img);
 	// cv::waitKey();
 	// 世界坐标系点投影到去畸变图像
 		std::vector<cv::Point2f> project_points2;
 	cv::projectPoints(world_points, rvecs[img_index], tvecs[img_index],
-		intrinsic, cv::Mat(), project_points2);
+		intrinsic, cv::Mat(), project_points2);  // 这里没有使用distortion_coeff
 	
 	for (auto& pt : project_points2) {
 		circle(undistort_img1, pt, 3, cv::Scalar(255, 0, 0), 2);
@@ -108,8 +110,8 @@ void test_CuboxAddARGame() {
 }
 
 int main() {
-	test_projectPoints();
-	// test_projectCube();
+	// test_projectPoints();
+	test_projectCube();
 	return 0;
 }
 
