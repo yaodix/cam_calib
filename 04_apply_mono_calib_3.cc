@@ -59,23 +59,15 @@ int main(int argc, char **argv) {
     // 2D image points. If you change the image, you need to change vector
     std::vector<cv::Point2d> image_points;
     std::vector<cv::Point3d> model_points;
-    // left img
-    // cv::Mat im = cv::imread("./workspace/headPose_lett.jpg");
-    // image_points.push_back( cv::Point2d(359, 391) );    // Nose tip
-    // image_points.push_back( cv::Point2d(399, 561) );    // Chin
-    // image_points.push_back( cv::Point2d(337, 297) );     // Left eye left corner
-    // image_points.push_back( cv::Point2d(513, 301) );    // Right eye right corner
-    // image_points.push_back( cv::Point2d(345, 465) );    // Left Mouth corner
-    // image_points.push_back( cv::Point2d(453, 469) );    // Right mouth corner
 
     // right img
-    cv::Mat im = cv::imread("./workspace/headPose_right.jpg");
-    image_points.push_back( cv::Point2d(839, 391) );    // Nose tip
-    image_points.push_back( cv::Point2d(806, 561) );    // Chin
-    image_points.push_back( cv::Point2d(861, 297) );    // Left eye left corner
-    image_points.push_back( cv::Point2d(688, 301) );    // Right eye right corner
-    image_points.push_back( cv::Point2d(850, 465) );    // Left Mouth corner
-    image_points.push_back( cv::Point2d(741, 469) );    // Right mouth corner
+    cv::Mat im = cv::imread("./workspace/headpose.png");
+    image_points.push_back( cv::Point2d(206, 267) );    // Nose tip
+    image_points.push_back( cv::Point2d(230, 392) );    // Chin
+    image_points.push_back( cv::Point2d(306, 209) );    // Left eye left corner
+    image_points.push_back( cv::Point2d(166, 240) );    // Right eye right corner
+    image_points.push_back( cv::Point2d(268, 325) );    // Left Mouth corner
+    image_points.push_back( cv::Point2d(206, 340) );    // Right mouth corner
  
     // 3D model points.
     model_points.push_back(cv::Point3d(0.0f, 0.0f, 0.0f));               // Nose tip
@@ -111,7 +103,7 @@ int main(int argc, char **argv) {
         circle(im, image_points[i], 3, Scalar(0,0,255), -1);
     }
  
-    cv::line(im, image_points[0], nose_end_point2D[0], cv::Scalar(255,0,0), 2);
+    cv::arrowedLine(im, image_points[0], nose_end_point2D[0], cv::Scalar(0,255,255), 2);
  
     cout << "Rotation Vector " << endl << rotation_vector << endl;
     cout << "Translation Vector" << endl << translation_vector << endl;
