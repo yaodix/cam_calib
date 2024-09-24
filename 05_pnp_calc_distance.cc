@@ -57,7 +57,7 @@ void test_caldistance() {
 	std::cout << "world dist " << x_world << " " << y_world << std::endl;
 
 	// opencv 4
-	// cv::drawFrameAxes(rectify_img, intrinsic, distortion_coeff, rvecs[img_index], tvecs[img_index], 2 * squareSize);
+	// cv::drawFrameAxes(rectify_img, intrinsic, cv::Mat(), rvecs[img_index], tvecs[img_index], 2 * squareSize);
 
 	cv::circle(rectify_img, {410,82}, 2, cv::Scalar(255,0,0));
 	cv::putText(rectify_img, std::to_string(x_world).substr(0,4)+","+std::to_string(y_world).substr(0,4),
